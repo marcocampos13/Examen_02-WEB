@@ -1,0 +1,654 @@
+
+===============================================================================================
+Institute....: Universidad Técnica Nacional
+Campus.......: Pacífico
+Career.......: Tecnologías de Información
+Course.......: ITI-523 - Tecnología y Sistemas WEB II
+Period.......: 2-2025
+Document.....: Configuring express js with postgreSQL engine.txt
+Goals........: Create development environment
+				- Create API-Rest with access database using PostgreSQL
+				- Connect the developer tool with remote React project
+Professor....: Jorge Ruiz (york)
+Student......:
+===============================================================================================
+
+Step 01 - Install PostgreSQL in Docker environment 
+
+	- Using your virtual machine and your user (not root privileges required)
+	
+		mkdir /home/<myuser>/data/postgres
+		
+	
+	- Download postgres image from dockerHub, latest version
+
+		docker pull postgres
+
+		
+	- Run image and create instance PostgreSQL into docker container and stabilize 
+	  persistent data with external directory, remember change username and password
+	 
+		docker run --name postgreSQL -p 5432:5432 -e POSTGRES_PASSWORD=parda99* -v /home/<myuser>/data/postgres:/var/lib/postgresql/data -d postgres	
+
+	
+Step 02 - Create database
+
+	- In your Windows machine open pgAdmin
+	
+		- Stabilish a new connection database server
+		
+			host.......: the ip address of your virtual machine
+			username...: postgres
+			password...: parda99*	(or your custom password)
+			
+	
+	- In your new database server conecction creates a new database:
+	
+		create database "apidb"
+			with
+			owner = postgres
+			encoding = 'utf8'
+			lc_collate = 'en_us.utf8'
+			lc_ctype = 'en_us.utf8'
+			connection limit = -1
+			is_template = false;
+		
+
+		create table users (
+		  id serial primary key,
+		  name varchar(35),
+		  email varchar(35)
+		);
+	
+
+Step 03 - Create express project
+
+	- Create a folder for you new project (you must use PowerShell or cmd terminal)
+	
+		mkdir accPostgreSQL
+		
+		cd accPostgreSQL
+
+		
+	- Init express project
+	
+		npm init -y
+		
+		- you can see a message like this:
+		
+			{
+			  "name": "accpostgresql",
+			  "version": "1.0.0",
+			  "description": "",
+			  "main": "index.js",
+			  "scripts": {
+				"test": "echo \"Error: no test specified\" && exit 1"
+			  },
+			  "keywords": [],
+			  "author": "",
+			  "license": "ISC"
+			}
+			
+	- Install tools required (express, postgreSQL library and json support transfer)
+	
+		npm i express pg	
+
+		npm install body-parser
+		
+		npm install cors
+		
+		
+Setp 04 - Open the project folder with your favorite IDE
+
+	- Create routes folder into the root project folder
+	
+	- Create <root project>/routes/author.js file
+	
+	- Open <root project>/routes/author.js file and writes:
+	
+		var express = require('express');
+		var router = express.Router();
+
+		/* GET author listing. */
+		router.get('/', function(req, res, next) {
+			salida = {
+				status_code:200,
+				status_message: 'Ok',
+				data:{
+					name: 'Jorge Ruiz',
+					nickname: 'York',
+					occupation: 'Computer Science Professor',
+					since: 1993
+				}
+			};
+			res.set('Content-Type', 'application/json').status(200).send(salida);
+		});
+
+		module.exports = router;
+	
+	
+	- Save changes	
+	
+	
+	- Create <root project>/routes/index.js file
+	
+	- Open <root project>/routes/index.js file and writes:
+	
+		var express = require('express');
+		var router = express.Router();
+
+		router.get('/', function(req, res) {
+			salida = {
+				status_code:200,
+				status_message: 'Ok',
+				data:{
+					title: 'API-Rest Demo....!',
+					description: 'An example to access and register data into PostgreSQL Engine.'
+				}
+			};
+			res.set('Content-Type', 'application/json').status(200).send(salida);
+		});
+
+		module.exports = router;
+	
+	
+	- Save changes
+	
+	
+	- Create <root project>/routes/users.js file
+	
+	- Open <root project>/routes/users.js file and writes:
+	
+		var express = require('express');
+		var router = express.Router();
+		var pool = require('../utils/conex');
+
+		// Retrieves all registered users
+		router.get('/', function (req, res){
+			pool.query('select * from users order by id asc', (error, results) => {
+				if (error) {
+					throw error
+				}
+				salida = {
+					"status_code": 200,
+					"status_message": "OK",
+					"data": results.rows}
+				res.status(200).json(salida)
+			})
+		});
+
+		router.get('/:id', function (req, res){
+			const id = parseInt(req.params.id)
+
+			pool.query('select * from users where id = $1', [id], (error, results) => {
+				if (error) {
+					throw error
+				}
+				salida = {
+					"status_code": 200,
+					"status_message": "OK",
+					"data": results.rows}
+				res.status(200).json(salida)
+			})
+		});
+
+		router.post('/', function(req, res, next) {
+			const { name, email } = req.body
+
+			pool.query('insert into users (name, email) VALUES ($1, $2)', [name, email], (error, results) => {
+				if (error) {
+					throw error
+				}
+				salida = {
+					"status_code": 201,
+					"status_message": "Data was created",
+					"data": "User added successfully"}
+				res.status(201).send(salida);
+			})
+		});
+
+		router.put('/', function(req, res, next) {
+			const {id, name, email } = req.body
+
+			pool.query(
+				'update users set name = $1, email = $2 where id = $3',
+				[name, email, id],
+				(error, results) => {
+					if (error) {
+						throw error
+					}
+					salida = {
+						"status_code": 200,
+						"status_message": "Ok",
+						"data": "User modified successfully"}
+					res.status(200).send(salida)
+				}
+			)
+		});
+
+		router.delete('/', function(req, res, next) {
+			const {id} = req.body
+
+			pool.query('delete from users where id = $1', [id], (error, results) => {
+				if (error) {
+					throw error
+				}
+				salida = {
+					"status_code": 200,
+					"status_message": "Ok",
+					"data": "User deleted successfully"}
+				res.status(200).send(salida)
+			})
+		});
+
+		module.exports = router
+	
+	
+	- Save changes
+	
+
+Setp 05 - Create connection with PostgreSQL engine
+
+	- Create utils folder into the root project folder
+	
+	- Create <root project>/utils/conex.js file
+	
+	- Open <root project>/utils/conex.js file and writes:
+	
+		// Connect to the database
+		const Pool = require('pg').Pool
+		const pool = new Pool({
+			user: 'postgres',
+			host: 'localhost',
+			database: 'apiDB',
+			password: 'parda99*',
+			port: 5432,
+		})
+
+		module.exports = pool;
+		
+		
+	- Save changes	
+	
+
+Step 06 - Create app.js into the root project
+
+	- Create <root project>/app.js file
+	
+	- Open <root project>/app.js file
+	
+		const express = require('express')
+		const bodyParser = require('body-parser')
+		var cors = require('cors')
+
+		// Creates the application
+		const app = express()
+		
+		// Enable CORS, Cross-Origin Resource Sharing, to allow API to be accessed by web pages,
+		// and other web origins
+		app.use(cors());
+
+		// Application parser to support JSON data format
+		app.use(bodyParser.json({ type: 'application/json' }))
+		app.use(
+			bodyParser.urlencoded({
+				extended: true,
+			})
+		)
+
+		// Creates each route link
+		var indexRouter = require('./routes/index');
+		var authorRouter = require('./routes/author');
+		var usersRouter = require('./routes/users');
+
+		// Create all listener for each route link
+		app.use('/', indexRouter);
+		app.use('/author', authorRouter);
+		app.use('/users', usersRouter);
+
+		// Execute local API server and create listener on port 5005
+		var server = app.listen(5000, () => {
+			console.log(`Server is listening on port ${server.address().port}`);
+		});
+	
+	
+	- Save changes
+	
+	
+Step 07 - Review package.json file.
+
+	- Open <root project>/package.json and check main variable:
+	
+		{
+		  "name": "accpostgresql",
+		  "version": "1.0.0",
+		  "description": "",
+		  "main": "app.js",
+		  "scripts": {
+			"test": "echo \"Error: no test specified\" && exit 1"
+		  },
+		  "keywords": [],
+		  "author": "",
+		  "license": "ISC",
+		  "dependencies": {
+			"body-parser": "^1.20.2",
+			"cors": "^2.8.5",
+			"express": "^4.18.2",
+			"pg": "^8.11.3"
+		  }
+		}
+		
+	- Changes value only if required.
+	
+	
+Step 08 - Run API-Rest
+
+	- Open terminal console in your favorite IDE and writes:
+	
+		 node .\app.js
+
+
+	- Open Postman or other rest client application and testing with:
+	
+	
+		- Get API data introduction
+		
+			Method...: GET
+			URL......: http://<remote ip address>:5000
+			Body.....: Not required
+			
+			Response:
+			
+				{
+					"status_code": 200,
+					"status_message": "Ok",
+					"data": {
+						"title": "API-Rest Demo....!",
+						"description": "An example to access and register data into PostgreSQL Engine."
+					}
+				}
+		
+		
+		- Get API data author
+		
+			Method...: GET
+			URL......: http://<remote ip address>:5000/author
+			Body.....: Not required
+			
+			Response:
+			
+				{
+					"status_code": 200,
+					"status_message": "Ok",
+					"data": {
+						"name": "Jorge Ruiz",
+						"nickname": "York",
+						"occupation": "Computer Science Professor",
+						"since": 1993
+					}
+				}
+			
+		
+		- Post API data user
+		
+			Method...: POST
+			URL......: http://<remote ip address>:5000/users
+			Body.....: Raw - JSON
+			
+				{
+					"name":"Donna Summer",
+					"email":"hotstuff@utn.ac.cr"
+				}
+			
+			
+			Response:
+			
+				{
+					"status_code": 201,
+					"status_message": "Data was created",
+					"data": "User added successfully"
+				}
+				
+				
+		- Get API data all users
+		
+			Method...: GET
+			URL......: http://<remote ip address>:5000/users
+			Body.....: Not required
+			
+			Response:
+
+				{
+					"status_code": 200,
+					"status_message": "OK",
+					"data": [
+						{
+							"id": 1,
+							"name": "Jorge Ruiz",
+							"email": "jruiz@utn.ac.cr"
+						},
+						{
+							"id": 3,
+							"name": "mario baracus",
+							"email": "mbar@utn.ac.cr"
+						},
+						{
+							"id": 4,
+							"name": "Donna Summer",
+							"email": "hotstuff@utn.ac.cr"
+						}
+					]
+				}
+
+
+		- Get API data especific user with id
+		
+			Method...: GET
+			URL......: http://<remote ip address>:5000/users/1
+			Body.....: Not required
+			
+			Response:
+
+				{
+					"status_code": 200,
+					"status_message": "OK",
+					"data": [
+						{
+							"id": 1,
+							"name": "Jorge Ruiz",
+							"email": "jruiz@utn.ac.cr"
+						}
+					]
+				}
+				
+				
+		- Put API data user
+		
+			Method...: PUT
+			URL......: http://<remote ip address>:5000/users
+			Body.....: Raw - JSON
+			
+				{
+					"id": 2,
+					"name": "silvestre stallone",
+					"email": "rambotico@utn.ac.cr"
+				}
+			
+			
+			Response:
+			
+				{
+					"status_code": 200,
+					"status_message": "Ok",
+					"data": "User modified successfully"
+				}
+
+		
+		- Delete API data user
+		
+			Method...: DELETE
+			URL......: http://<remote ip address>:5000/users
+			Body.....: Raw - JSON
+			
+				{
+					"id": 3
+				}
+			
+			
+			Response:
+				
+				{
+					"status_code": 200,
+					"status_message": "Ok",
+					"data": "User deleted successfully"
+				}
+				
+
+Step 09 - Add error handling middleware
+
+	- Open <root project>/app.js file and add the next code:
+
+		- After app.use(cors()) sentence, writes:
+
+			// =========================================================================================
+			// Middleware order and error handling, if any error occurs in the application it will
+			// be handled by the error-handling middleware
+			// =========================================================================================
+			// Error handling for invalid routes
+			app.use((err, req, res, next) => {
+				console.error('Error:', err.message);
+				res.status(404).send('Not Found');
+			});
+
+			// Error handling for bad requests
+			app.use((err, req, res, next) => {
+				console.error('Error:', err.message);
+				res.status(400).send('Bad Request');
+			});
+
+			// Error handling for internal server errors
+			app.use((err, req, res, next) => {
+				console.error('Error:', err.message);
+				res.status(500).send('Internal Server Error');
+			});
+		
+	- Save changes
+
+
+Step 10 - Exploring Express Security
+
+	- Using a linux console (your server virtual machine) and writes:
+	
+		curl http://localhost:5000/ --include
+		
+		- you can see a message as below
+		
+			HTTP/1.1 200 OK
+			X-Powered-By: Express
+			Access-Control-Allow-Origin: *
+			Content-Type: application/json; charset=utf-8
+			Content-Length: 158
+			ETag: W/"9e-HDYhrq5SC7VjZfdSx0kpEe5FKvk"
+			Date: Mon, 19 Feb 2024 02:45:14 GMT
+			Connection: keep-alive
+			Keep-Alive: timeout=5
+		
+			{
+				"status_code":200,
+				"status_message":"Ok",
+				"data":{
+					"title":"API-Rest Demo....!",
+					"description":"An example to access and register data into PostgreSQL Engine."
+				}
+			}
+	
+	
+		- Note the X-Powered-By header, which specifies, the backend technology, the version number
+		  of the framework or library used to implement the HTTP response server.
+		  
+		  OWASP indicates that this header should be omitted to improve web security.
+		  
+	
+	- Stop the API-Rest application.
+	
+	
+	- Open the terminal window in your favorite IDE (eg. Visual Code) and execute the next command:
+	
+		npm i helmet
+
+		
+	- Open <root project>/app.js file and add the next code:
+	
+		- In the import section at the begin of file (required libraries)
+
+			const helmet = require("helmet")
+			
+		
+		- After app.use(cors()) sentence, writes:
+		
+			// Enable Helmet, a collection of 14 smaller middleware functions that set HTTP headers
+			// to secure the application
+			app.use(helmet());
+			
+			
+		- Save changes	
+	
+	
+	- Run again the API-Rest application
+	
+		node .\app.js
+
+
+	- Using again the linux console (your server virtual machine), writes:
+	
+		curl http://localhost:5000/ --include
+		
+		- you can see a message as below
+	
+			HTTP/1.1 200 OK
+			Access-Control-Allow-Origin: *
+			Content-Security-Policy: default-src 'self';
+									 base-uri 'self';
+									 font-src 'self' https: data:;
+									 form-action 'self';
+									 frame-ancestors 'self';
+									 img-src 'self' data:;
+									 object-src 'none';
+									 script-src 'self';
+									 script-src-attr 'none';
+									 style-src 'self' https: 'unsafe-inline';
+									 upgrade-insecure-requests
+			Cross-Origin-Opener-Policy: same-origin
+			Cross-Origin-Resource-Policy: same-origin
+			Origin-Agent-Cluster: ?1
+			Referrer-Policy: no-referrer
+			Strict-Transport-Security: max-age=15552000; includeSubDomains
+			X-Content-Type-Options: nosniff
+			X-DNS-Prefetch-Control: off
+			X-Download-Options: noopen
+			X-Frame-Options: SAMEORIGIN
+			X-Permitted-Cross-Domain-Policies: none
+			X-XSS-Protection: 0
+			Content-Type: application/json; charset=utf-8
+			Content-Length: 158
+			ETag: W/"9e-HDYhrq5SC7VjZfdSx0kpEe5FKvk"
+			Date: Mon, 19 Feb 2024 15:08:18 GMT
+			Connection: keep-alive
+			Keep-Alive: timeout=5
+
+			{
+				"status_code":200,
+				"status_message":"Ok",
+				"data":{
+					"title":"API-Rest Demo....!",
+					"description":"An example to access and register data into PostgreSQL Engine."
+				}
+			}
+	
+	- Note:
+		For more information about helmet.js, visit the next link:
+		
+			https://helmetjs.github.io/
+			
+
+Step 11 - Be happy...!

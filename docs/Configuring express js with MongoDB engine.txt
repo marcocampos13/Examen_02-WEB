@@ -1,0 +1,320 @@
+========================================================================================
+Centro....: Universidad Técnica Nacional
+Sede......: Pacífico
+Carrera...: Tecnologías de Información
+Curso.....: ITI-523 - Tecnologías y Sistemas Web II
+Periodo...: 2-2025
+Documento.: Implementación de API-Restful con NodeJS (JavaScript) y MongoDB
+Objetivos.: Implementar servicio API con JavaScript          
+Profesor..: Jorge Ruiz (york)
+Estudiante: 
+========================================================================================
+
+Paso 01 - Crear la nueva aplicación (use su carpeta de trabajo)	
+
+	- Abra el powerShell en esta:
+	
+	- Creando las carpetas base
+		mkdir articles
+		cd articles
+	
+	- Incializar el proyecto
+		npm init
+		
+		npm install --save express http-errors body-parser mongoose cors helmet
+
+
+Paso 02 - Abra esta nueva carpeta con su editor de código favorito (Visual Code)
+
+
+Paso 03 - Crear las siguientes carpetas internas
+
+	models
+	routes
+	
+
+Paso 04 - Creando el modelo de la coleción para Mongo
+
+	- Crear el archivo  <root_project>/models/mdlArticle.js
+	
+	- Copiar el siguiente código:
+	
+		var mongoose = require('mongoose');
+
+		var schArticle = new mongoose.Schema({
+			title : {type: String, required:[true, 'This field is required']},
+			description: {type: String, required:[true, 'This field is required']},
+			body: {type: String, required:[true, 'This field is required']},
+			author: {type: String, required:[true, 'This field is required']},
+			comments:[{type: Object,
+					   properties:{comment:{type: String,required:[true, 'This field is required']},
+								   author: {type: String,required:[true, 'This field is required']}},
+					   required: false}]
+		});
+
+		mongoose.model('Articles', schArticle);	
+		
+		
+	- Salvar los cambios
+
+
+Paso 05 - Creando la ruta index
+
+	- Crear el archivo  <root_project>/routes/index.js
+	
+	- Copiar el siguiente código:
+	
+		var express = require('express');
+		var router = express.Router();
+
+		router.get('/', function(req, res) {
+		  salida = {
+			status_code:200,
+			status_message: 'Ok',
+			data:{
+			  title: 'Express articles....!',
+			  description: 'An example to register text like as newspaper articles'
+			}
+		  };
+		  res.set('Content-Type', 'application/json').status(200).send(salida);
+		});
+
+		module.exports = router;	
+		
+		
+	- Salvar los cambios	
+	
+	
+Paso 06 - Creando la ruta author (debe cambiar los datos de autor por los suyos)
+
+	- Crear el archivo <root_project>/routes/author.js
+	
+	- Copiar el siguiente código:
+
+		var express = require('express');
+		var router = express.Router();
+
+		/* GET author listing. */
+		router.get('/', function(req, res, next) {
+		  salida = {
+			status_code:200,
+			status_message: 'Ok',
+			data:{
+			  name: 'Jorge Ruiz',
+			  nickname: 'York',
+			  occupation: 'Computer Science Professor'
+			}
+		  };
+		  res.set('Content-Type', 'application/json').status(200).send(salida);
+		});
+
+		module.exports = router;	
+	
+	
+	- Salvar los cambios	
+	
+	
+Paso 07 - Creando la ruta article
+
+	- Crear el archivo <root_project>/routes/article.js
+	
+	- Copiar el siguiente código:
+
+		var express = require('express');
+		var router = express.Router();
+		var mongoose = require('mongoose');
+
+		var Article = mongoose.model('Articles');
+
+		// Retrieves all registered articles
+		router.get('/', function (req,res){
+		   Article.find({},[],(err,articles) =>{
+			   if(articles.length === 0){
+				   articles = {'articles': 'List is empty'}
+			   }
+			   salida = {
+				   status_code:200,
+				   status_message: 'Ok',
+				   data: articles
+			   };
+			   res.set('Content-Type', 'application/json').status(200).send(salida);
+		   })
+		});
+
+		// Retrieve only one article by id
+		router.get('/:id', function (req,res){
+			Article.find({_id:req.params.id},[],(err,articles) =>{
+				if(articles.length === 0){
+					articles = {'articles': 'List is empty'}
+				}
+				salida = {
+					status_code:200,
+					status_message: 'Ok',
+					data: articles
+				};
+				res.set('Content-Type', 'application/json').status(200).send(salida);
+			})
+		});
+
+		// Insert article without comments
+		router.post('/', function(req, res, next) {
+			var newArticle = req.body;
+			var arti = new Article();
+
+			arti.title = newArticle.title;
+			arti.description = newArticle.description;
+			arti.body = newArticle.body;
+			arti.author = newArticle.author;
+
+			arti.save().then(()=>{
+				salida = {
+					status_code:201,
+					status_message: 'Data was created',
+					data: arti
+				};
+				res.set('Content-Type', 'application/json').status(201).send(salida);
+			}).catch(next);
+		});
+
+		// Update one article by id, without comments
+		router.put('/', function(req, res, next) {
+			Article.updateOne({_id:req.body.id},
+				{$set:{title:req.body.title,
+							 description:req.body.description,
+							 body:req.body.body,
+							 author:req.body.author}}).then(()=>{
+				salida = {
+					status_code:200,
+					status_message: 'Ok',
+					data: 'Record updated'
+				};
+				res.set('Content-Type', 'application/json').status(200).send(salida);
+			}).catch(next);
+		});
+
+		// Delete one article by id
+		router.delete('/', function(req, res, next) {
+			Article.deleteOne({_id:req.body.id}).then(()=>{
+				salida = {
+					status_code:200,
+					status_message: 'Ok',
+					data: 'Record deleted'
+				};
+				res.set('Content-Type', 'application/json').status(200).send(salida);
+			}).catch(next);
+		});
+
+		module.exports = router;	
+		
+		
+	- Salvar los cambios	
+	
+	
+Paso 08 - Creando la ruta comment
+
+	- Crear el archivo <root_project>/routes/comment.js
+	
+	- Copiar el siguiente código:
+
+		var express = require('express');
+		var router = express.Router();
+		var mongoose = require('mongoose');
+
+		var Article = mongoose.model('Articles');
+
+		// Simulate a post process, applying update registered article, adding a new comment
+		router.post('/', function(req, res, next) {
+			Article.updateOne({_id:req.body.id},
+				{$push:{comments:{comment:req.body.comment,
+										author:req.body.author}}}).then(()=>{
+				salida = {
+					status_code:201,
+					status_message: 'Data was created',
+					data: 'Comments added into article'
+				};
+				res.set('Content-Type', 'application/json').status(201).send(salida);
+			}).catch(next);
+		});
+
+		module.exports = router;
+		
+		
+	- Salvar los cambios		
+	
+	
+Paso 09 - Crear el modulo de ejecución. (recuerde cambiar los datos de acceso a MongoDB)
+
+	- Crear el archivo <root_project>/app.js
+	
+	- Copiar el siguiente código:	
+
+		// cargar las librerias del hambiente del proyecto
+		var createError = require("http-errors");
+		var express = require("express");
+		var bodyParser = require("body-parser");
+		var mongoose = require("mongoose");
+		var cors = require("cors");
+		const helmet = require("helmet");
+
+		// crear la aplicacion 
+		var app = express();
+
+		// Applicacion pasrse para soportar data en formato JSON
+		app.use(bodyParser.json({type: "application/json"}));
+
+		// Habilitar Cors
+		app.use(cors());
+
+		// Habilitar Helmet para seguridad
+		app.use(helmet());
+
+		//conectar a la base de datos
+		mongoose.connect('mongodb://admin:esteban2511@localhost:27017/',{dbName:'dbArticles'});
+		require('./models/mdlArticle');
+
+		//Crear las rutas de cada uno de los endpoints
+		var indexRouter = require('./routes/index');
+		var authorRouter = require('./routes/author');
+		var articleRouter = require('./routes/article');
+		var commentRouter = require('./routes/comment');
+
+		// Crear todas las rutas de escuchas de cada una de las rutas
+		app.use('/', indexRouter);
+		app.use('/author', authorRouter);      
+		app.use('/articles', articleRouter);
+		app.use('/comments', commentRouter);
+
+		// Ejecutar la API y crear el puerto de ecucha en el pouerto 5000
+		var server = app.listen(5005, function () {
+			console.log(`Server escuchando en el puerto ${server.address().port}`);
+
+		});
+		
+		
+	- Salvar los cambios		
+	
+	
+Paso 10 - Ejecutar la aplicación
+
+	node app.js
+	
+	Para validar puede usar Postman o un webBrowser
+	
+		http://localhost:5005
+	
+		o
+	
+		http://10.236.2.142:5005 o
+		http://10.236.2.142:5005/author
+	
+	
+	Recuerde ajustar sus direcciones IP	
+	
+	Para la ejecuión completa del demo revise la siguiente guía:
+	
+	https://documenter.getpostman.com/view/141107/UVXkoFU4#b820fac8-b512-4cdc-a6fb-0a6072cf9760
+	
+	
+Paso 11 - Sea feliz	
+
+

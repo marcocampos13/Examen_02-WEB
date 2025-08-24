@@ -1,0 +1,131 @@
+/*
+========================================================================================
+Centro....: Universidad Técnica Nacional
+Sede......: Pacífico
+Carrera...: Tecnologías de Información
+Curso.....: ITI-523 - Tecnologías y Sistemas Web II
+Periodo...: 2-2025
+Documento.: Semana 11 - Práctica 03
+Tema......: API REST con NodeJS, Express y MongoDB
+Objetivos.: Crear una API REST que permita gestionar imágenes almacenadas en MongoDB.          
+Profesor..: Jorge Ruiz (york)
+Estudiante: Esteban Amores and Laura Montero
+========================================================================================
+*/
+
+// cargar las librerias del hambiente del proyecto
+let cors = require('cors')
+const helmet = require("helmet");
+const express = require('express');
+let mongoose = require('mongoose');
+let createError = require("http-errors");
+const bodyParser = require('body-parser');
+import bcrypt from 'bcryptjs';
+
+
+// crear la aplicacion 
+var app = express();
+
+// Applicacion pasrse para soportar data en formato JSON
+app.use(bodyParser.json({type: "application/json"}));
+
+// Habilitar Cors
+app.use(cors());
+
+// Habilitar Helmet para seguridad
+app.use(helmet());
+
+// ---------------------------------------------------
+// Seccion - Crear la conexión a la base de datos
+// Nota: Esta linea de codigo es otra forma de crear y conectarse a la base de datos.
+// mongoose.connect('mongodb://admin:esteban2511@localhost:27017/',{dbName:'dbArticles'});
+// ---------------------------------------------------
+// Importar las variables de conexión a la base de datos
+const dbConfig = require('./config/configDB.js');
+mongoose.connect(`mongodb://${dbConfig.USER}:${dbConfig.PASS}@${dbConfig.HOST}/`,{ dbName: dbConfig.DB });
+
+// Cargar modelos 
+require('./models/mdl_Categories.js');
+require ('./models/mdl_Users.js');
+require ('./models/mdl_Roles.js');
+
+//Crear las rutas de cada uno de los endpoints
+let indexRouter = require('./routes/rout_Index.js');
+let categoriesRouter = require('./routes/rout_Categories.js');
+let usersRouter = require('./routes/rout_Users.js');
+
+
+// Crear todas las rutas de escuchas de cada una de las rutas
+app.use('/', indexRouter);
+app.use('/imagenes', categoriesRouter);
+app.use('/usuarios', usersRouter);
+
+// Create the initial roles if they do not exist
+async function initial() {
+    const Roles = mongoose.model('Roles');
+    await Roles.estimatedDocumentCount().then((count) => {
+        if (count === 0) {
+            const newRoles = [
+                {
+                    name: "guest",
+                    level: 1,
+                    description: "Guest-user"
+                },
+                {
+                    name: "user",
+                    level: 3,
+                    description: "Normal-user"
+                },
+                {
+                    name: "admin",
+                    level: 5,
+                    description: "Administrator"
+                },
+                {
+                    name: "root",
+                    level: 3,
+                    description: "Super-user"
+                }];
+
+            Roles.insertMany(newRoles).then(() => {
+                console.log("added 'guest', 'root' 'user' and 'admin' to roles collection");
+            }).catch(err => {
+                console.log("error", err);
+            });
+        };
+    });
+};
+
+// Crear usuario root por defecto si no existe
+async function createDefaultRootUser() {
+    const Users = mongoose.model('Users');
+    const Roles = mongoose.model('Roles');
+
+    // Verificar si el usuario 'root' ya existe
+    const existingUser = await Users.findOne({ username: 'root' });
+    if (existingUser) {
+        console.log("Root user already exists");
+        return;
+    }
+
+    // Hashear la contraseña
+    const hashedPassword = await bcrypt.hash('provisional123', 10);
+
+    // Crear el usuario
+    const newUser = new Users({
+        username: 'root',
+        email: 'root@example.com',
+        password: hashedPassword,
+        roles: [rootRole._id]
+    });
+
+    await newUser.save();
+    console.log("Default root user created (username: root, password: provisional123)");
+}
+
+// Ejecutar la API y crear el puerto de ecucha en el pouerto 5000
+let server = app.listen(5000, function () {
+    console.log(`Server escuchando en el puerto ${server.address().port}`);
+
+});
+

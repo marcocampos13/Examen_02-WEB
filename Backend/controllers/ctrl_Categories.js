@@ -1,0 +1,122 @@
+const fs = require('node:fs');
+const Categories = require('../models/mdl_Categories'); // Solo una declaración
+
+// Obtener categoría con imagen en base64
+const getCategories = async (req, res) => {
+    const id = req.params.id;
+    try {
+        const categoria = await Categories.findOne({ CategoryID: id });
+
+        if (!categoria) {
+            return res.status(404).json({
+                status_code: 404,
+                status_message: "Not Found",
+                content: { error: "Categoría no encontrada" }
+            });
+        }
+
+        res.status(200).json({
+            status_code: 200,
+            status_message: "OK",
+            content: {
+                resultado: {
+                    CategoryID: categoria.CategoryID,
+                    CategoryName: categoria.CategoryName,
+                    Description: categoria.Description,
+                    Mime: categoria.Mime,
+                    Image: categoria.Image.toString("base64") // Convertir la imagen a Base64
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            status_code: 500,
+            status_message: "Internal Server Error",
+            content: { error: error.toString() }
+        });
+    }
+};
+
+// Obtener solo la imagen binaria
+const getCategoriesFoto = async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        const categoria = await Categories.findOne({ CategoryID: id });
+
+        if (!categoria || !categoria.Image) {
+            return res.status(404).json({
+                status_code: 404,
+                status_message: "Not Found",
+                content: { error: "Imagen no encontrada" }
+            });
+        }
+
+        res.writeHead(200, {
+            "Content-Type": categoria.Mime,
+            "Content-Length": categoria.Image.length
+        });
+        res.end(categoria.Image);
+
+    } catch (error) {
+        res.status(500).json({
+            status_code: 500,
+            status_message: "Internal Server Error",
+            content: { error: error.toString() }
+        });
+    }
+};
+
+// Agregar nueva categoría con imagen
+const addCategories = async (req, res) => {
+    try {
+        const { id, nombre, descripcion } = req.body;
+        const imagenBuffer = fs.readFileSync(req.files[0].path);
+        const mime = req.files[0].mimetype;
+
+        const nuevaCategoria = new Categories({
+            CategoryID: id,
+            CategoryName: nombre,
+            Description: descripcion,
+            Image: imagenBuffer,
+            Mime: mime
+        });
+
+        await nuevaCategoria.save();
+
+        // Eliminar archivo temporal
+        try {
+            fs.unlinkSync(req.files[0].path);
+        } catch (unlinkError) {
+            console.error("No se pudo eliminar el archivo temporal:", unlinkError);
+        }
+
+        res.status(200).json({
+            status_code: 200,
+            status_message: 'OK',
+            content: {
+                resultado: 'Categoría guardada correctamente'
+            }
+        });
+    } catch (error) {
+        if (req.files && req.files[0] && fs.existsSync(req.files[0].path)) {
+            try {
+                fs.unlinkSync(req.files[0].path);
+            } catch (unlinkError) {
+                console.error("No se pudo eliminar el archivo temporal:", unlinkError);
+            }
+        }
+
+        res.status(500).json({
+            status_code: 500,
+            status_message: 'Internal Server Error',
+            content: { error: error.toString() }
+        });
+    }
+};
+
+module.exports = {
+    getCategories,
+    getCategoriesFoto,
+    addCategories
+};
