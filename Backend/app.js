@@ -9,7 +9,7 @@ Documento.: Semana 11 - Práctica 03
 Tema......: API REST con NodeJS, Express y MongoDB
 Objetivos.: Crear una API REST que permita gestionar imágenes almacenadas en MongoDB.          
 Profesor..: Jorge Ruiz (york)
-Estudiante: Marco Campos Torres
+Estudiante: Marco Campos Torres y Jorjan Alvarado
 ========================================================================================
 */
 const cors = require('cors');
@@ -21,6 +21,10 @@ const bcrypt = require('bcryptjs');
 const cookieSession = require('cookie-session');
 require('./models/mdl_Categories.js');
 require('./models/User.js');
+
+// ⭐ Ruta de investigación
+const investigationRoutes = require('./routes/investigationRoutes'); // <-- AGREGA ESTA LÍNEA
+
 
 
 const app = express();
@@ -89,14 +93,15 @@ const workRouter = require('./routes/rout_Work.js');
 // ⭐ Nueva ruta de reviews
 const reviewRoutes = require("./routes/reviewRoutes");
 
+// ⭐ Ruta de investigación
 
 app.use('/api/trabajos', workRouter);
 app.use("/api/reviews", reviewRoutes);  // <-- Montamos el endpoint para reviews
+app.use('/api/investigacion', investigationRoutes);
 
 app.use('/', indexRouter);
 app.use('/imagenes', categoriesRouter);
 app.use('/usuarios', usersRouter);
-
 
 /* ============================
    Arranque servidor
