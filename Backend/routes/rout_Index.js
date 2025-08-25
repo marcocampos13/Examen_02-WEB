@@ -12,9 +12,9 @@ router.get('/', (req, res) => {
         status_code: 200,
         status_message: 'OK',
         content: {
-            mensaje: 'Hola Mundo - Practica03 - API REST con NodeJS, Express y MongoDB',
+            mensaje: 'Examen II',
             autor: 'Jorge Ruiz (york)',
-            student: "",
+            student: "Marco Campos and Jorjan Alvarado",
             fecha: new Date()
         }
     }
